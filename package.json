@@ -2,6 +2,7 @@
   "name": "webchat",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
@@ -19,6 +20,7 @@
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
+    "@vue/tsconfig": "^0.9.1",
     "autoprefixer": "^10.5.0",
     "eslint": "^7.32.0",
     "eslint-plugin-vue": "^8.0.3",

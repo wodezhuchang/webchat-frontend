@@ -19,6 +19,7 @@ import ChatView from '@/views/ChatView.vue';
 const chatStore = useChatStore();
 const loginModalRef = ref<InstanceType<typeof LoginModal> | null>(null);
 
+
 const handleLogin = async (username: string): Promise<void> => {
   try {
     await chatStore.login(username);

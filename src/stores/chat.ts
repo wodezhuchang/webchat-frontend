@@ -12,6 +12,7 @@ export const useChatStore = defineStore('chat', () => {
   const selectedUser = ref<string | null>(null);
   const isPrivateMode = ref<boolean>(false);
   const isLoading = ref<boolean>(false);
+  const connectionError = ref<string | null>(null);
 
   let heartbeatTimer: number | null = null;
 
@@ -232,6 +233,7 @@ export const useChatStore = defineStore('chat', () => {
     selectedUser,
     isPrivateMode,
     isLoading,
+    connectionError,
     login,
     connectWebSocket,
     disconnectWebSocket,

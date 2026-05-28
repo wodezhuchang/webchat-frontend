@@ -59,6 +59,24 @@
       </header>
 
       <div class="flex-1 overflow-y-auto p-6" ref="messageContainer">
+        <div v-if="chatStore.connectionError" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <span class="text-xl">⚠️</span>
+            </div>
+            <div class="ml-3 flex-1">
+              <p class="text-sm font-medium">连接失败</p>
+              <p class="text-xs mt-1">{{ chatStore.connectionError }}</p>
+              <p class="text-xs mt-2 text-red-600">请确保后端服务正在运行 (http://localhost:8000)</p>
+              <button
+                @click="chatStore.connectWebSocket"
+                class="mt-2 px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition-colors"
+              >
+                重新连接
+              </button>
+            </div>
+          </div>
+        </div>
         <div v-if="chatStore.isLoading" class="flex items-center justify-center h-full">
           <div class="text-gray-500">加载中...</div>
         </div>
