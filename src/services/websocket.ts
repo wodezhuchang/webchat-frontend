@@ -9,26 +9,37 @@ export class ChatWebSocket {
   private onDisconnectCallback: (() => void) | null = null;
   private onErrorCallback: ((error: Event, message: string) => void) | null = null;
   private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
+  private maxReconnectAttempts: number = 10;
   private reconnectDelay: number = 5000;
   private username: string | null = null;
   private shouldReconnect: boolean = true;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private isManualDisconnect: boolean = false;
 
   connect(username: string): void {
+    this.isManualDisconnect = false;
+
     if (this.ws) {
-      this.disconnect();
+      this.cleanup();
+    }
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
 
     this.username = username;
     this.shouldReconnect = true;
+    this.reconnectAttempts = 0;
 
-    console.log(`Connecting to WebSocket at ${WS_URL}/${username}...`);
+    const fullUrl = `${WS_URL}/${username}`;
+    console.log(`🔌 正在连接 WebSocket: ${fullUrl}`);
 
     try {
-      this.ws = new WebSocket(`${WS_URL}/${username}`);
+      this.ws = new WebSocket(fullUrl);
 
       this.ws.onopen = () => {
-        console.log('✓ WebSocket connected successfully');
+        console.log(`✅ WebSocket 连接成功! URL: ${fullUrl}`);
         this.reconnectAttempts = 0;
         this.onConnectCallback?.();
       };
@@ -36,69 +47,110 @@ export class ChatWebSocket {
       this.ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
+          console.log(`📨 收到消息:`, data);
           this.onMessageCallback?.(data);
         } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          console.error('❌ 解析消息失败:', error);
         }
       };
 
       this.ws.onclose = (event) => {
-        console.log(`WebSocket disconnected (code: ${event.code}, reason: ${event.reason || 'No reason'})`);
+        console.log(`🔌 WebSocket 关闭 (code: ${event.code}, reason: ${event.reason || '未知'})`);
         this.onDisconnectCallback?.();
+
+        if (this.isManualDisconnect) {
+          console.log('🔒 手动断开，不重连');
+          return;
+        }
 
         if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.attemptReconnect();
+        } else if (!this.shouldReconnect) {
+          console.log('🔒 不重连标志已设置');
+        } else {
+          console.log('⚠️ 达到最大重连次数，停止尝试');
         }
       };
 
       this.ws.onerror = (error) => {
-        const errorMsg = `WebSocket connection failed. Please check if the backend server is running at ${WS_URL}`;
-        console.error('✗ WebSocket error:', errorMsg);
+        const errorMsg = `WebSocket 连接失败! 请检查后端服务是否运行在 ${WS_URL}`;
+        console.error(`❌ ${errorMsg}`);
+        console.error('详细错误:', error);
         this.onErrorCallback?.(error, errorMsg);
       };
 
       setTimeout(() => {
         if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
-          console.warn('WebSocket connection is taking too long...');
+          console.warn('⏳ WebSocket 连接超时警告 - 正在尝试连接中...');
         }
       }, 5000);
 
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      const errorMsg = `Failed to create WebSocket: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error('❌ 创建 WebSocket 失败:', error);
+      const errorMsg = `创建连接失败: ${error instanceof Error ? error.message : '未知错误'}`;
       this.onErrorCallback?.(new Event('error'), errorMsg);
     }
   }
 
   private attemptReconnect(): void {
-    if (!this.shouldReconnect || !this.username) return;
+    if (!this.shouldReconnect || !this.username || this.isManualDisconnect) return;
 
     this.reconnectAttempts++;
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay / 1000}s...`);
+    console.log(`🔄 重连尝试 ${this.reconnectAttempts}/${this.maxReconnectAttempts}，${this.reconnectDelay / 1000}秒后重试...`);
 
-    setTimeout(() => {
-      if (this.username && this.shouldReconnect) {
+    this.reconnectTimer = setTimeout(() => {
+      if (this.username && this.shouldReconnect && !this.isManualDisconnect) {
         this.connect(this.username);
       }
     }, this.reconnectDelay);
   }
 
-  disconnect(): void {
-    this.shouldReconnect = false;
-    this.username = null;
-
+  private cleanup(): void {
     if (this.ws) {
-      console.log('Manually disconnecting WebSocket...');
-      this.ws.close(1000, 'User disconnected');
+      try {
+        this.ws.onopen = null;
+        this.ws.onmessage = null;
+        this.ws.onclose = null;
+        this.ws.onerror = null;
+        this.ws.close(1000, '清理连接');
+      } catch (error) {
+        console.error('清理连接时出错:', error);
+      }
       this.ws = null;
     }
   }
 
+  disconnect(): void {
+    this.isManualDisconnect = true;
+    this.shouldReconnect = false;
+    this.username = null;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    this.cleanup();
+    console.log('👋 WebSocket 已断开');
+  }
+
   send(data: object): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
-    } else {
-      console.error('✗ Cannot send message: WebSocket is not connected');
+    if (!this.ws) {
+      console.error('❌ 无法发送消息: WebSocket 实例不存在');
+      return;
+    }
+
+    if (this.ws.readyState !== WebSocket.OPEN) {
+      console.error(`❌ 无法发送消息: WebSocket 状态不正确 (readyState: ${this.ws.readyState})`);
+      return;
+    }
+
+    try {
+      const message = JSON.stringify(data);
+      console.log(`📤 发送消息: ${message}`);
+      this.ws.send(message);
+    } catch (error) {
+      console.error('❌ 发送消息失败:', error);
     }
   }
 
@@ -140,6 +192,10 @@ export class ChatWebSocket {
 
   getReadyState(): number | null {
     return this.ws?.readyState ?? null;
+  }
+
+  getUrl(): string | null {
+    return this.ws?.url ?? null;
   }
 }
 

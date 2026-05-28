@@ -74,7 +74,7 @@ export const useChatStore = defineStore('chat', () => {
         break;
 
       case 'pong':
-        console.log('Heartbeat response received');
+        console.log('💓 心跳响应收到');
         break;
     }
   };
@@ -83,9 +83,10 @@ export const useChatStore = defineStore('chat', () => {
     stopHeartbeat();
     heartbeatTimer = window.setInterval(() => {
       if (isConnected.value) {
+        console.log('💓 发送心跳');
         chatWebSocket.sendPing();
       }
-    }, 30000);
+    }, 10000);
   };
 
   const stopHeartbeat = (): void => {
@@ -100,6 +101,7 @@ export const useChatStore = defineStore('chat', () => {
       const response = await api.login(username);
       if (response.success) {
         currentUser.value = username;
+        connectionError.value = null;
         connectWebSocket();
         return true;
       } else {
@@ -114,23 +116,32 @@ export const useChatStore = defineStore('chat', () => {
   const connectWebSocket = (): void => {
     if (!currentUser.value) return;
 
+    connectionError.value = null;
     chatWebSocket.connect(currentUser.value);
 
     chatWebSocket.setOnConnect(() => {
+      console.log('✅ WebSocket连接成功，正在初始化...');
       isConnected.value = true;
+      connectionError.value = null;
       startHeartbeat();
-      chatWebSocket.requestOnlineUsers();
+      chatWebSocket.sendPing();
+      setTimeout(() => {
+        chatWebSocket.requestOnlineUsers();
+      }, 500);
     });
 
     chatWebSocket.setOnDisconnect(() => {
+      console.log('🔌 WebSocket断开');
       isConnected.value = false;
       stopHeartbeat();
     });
 
     chatWebSocket.setOnMessage(handleWebSocketMessage);
 
-    chatWebSocket.setOnError((error) => {
-      console.error('WebSocket error:', error);
+    chatWebSocket.setOnError((error, message) => {
+      console.error('❌ WebSocket错误:', message);
+      isConnected.value = false;
+      connectionError.value = message;
     });
   };
 
@@ -223,6 +234,7 @@ export const useChatStore = defineStore('chat', () => {
     isPrivateMode.value = false;
     clearMessages();
     onlineUsers.value = [];
+    connectionError.value = null;
   };
 
   return {
