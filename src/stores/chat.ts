@@ -1,12 +1,17 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { api } from '@/services/api';
 import { chatWebSocket } from '@/services/websocket';
 import type { Message, WebSocketMessage } from '@/types';
 
+interface PrivateChatHistory {
+  [username: string]: Message[];
+}
+
 export const useChatStore = defineStore('chat', () => {
   const currentUser = ref<string | null>(null);
-  const messages = ref<Message[]>([]);
+  const aiMessages = ref<Message[]>([]);
+  const privateMessages = ref<PrivateChatHistory>({});
   const onlineUsers = ref<string[]>([]);
   const isConnected = ref<boolean>(false);
   const selectedUser = ref<string | null>(null);
@@ -16,6 +21,13 @@ export const useChatStore = defineStore('chat', () => {
 
   let heartbeatTimer: number | null = null;
 
+  const messages = computed(() => {
+    if (isPrivateMode.value && selectedUser.value) {
+      return privateMessages.value[selectedUser.value] || [];
+    }
+    return aiMessages.value;
+  });
+
   const generateId = (): string => {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
   };
@@ -24,7 +36,7 @@ export const useChatStore = defineStore('chat', () => {
     switch (data.type) {
       case 'ai':
         if (data.content) {
-          messages.value.push({
+          aiMessages.value.push({
             id: generateId(),
             role: 'assistant',
             content: data.content,
@@ -35,7 +47,11 @@ export const useChatStore = defineStore('chat', () => {
 
       case 'private':
         if (data.from && data.content) {
-          messages.value.push({
+          const fromUser = data.from;
+          if (!privateMessages.value[fromUser]) {
+            privateMessages.value[fromUser] = [];
+          }
+          privateMessages.value[fromUser].push({
             id: generateId(),
             role: 'private',
             content: data.content,
@@ -53,23 +69,47 @@ export const useChatStore = defineStore('chat', () => {
 
       case 'info':
         if (data.content) {
-          messages.value.push({
-            id: generateId(),
-            role: 'system',
-            content: data.content,
-            timestamp: new Date()
-          });
+          if (isPrivateMode.value && selectedUser.value) {
+            if (!privateMessages.value[selectedUser.value]) {
+              privateMessages.value[selectedUser.value] = [];
+            }
+            privateMessages.value[selectedUser.value].push({
+              id: generateId(),
+              role: 'system',
+              content: data.content,
+              timestamp: new Date()
+            });
+          } else {
+            aiMessages.value.push({
+              id: generateId(),
+              role: 'system',
+              content: data.content,
+              timestamp: new Date()
+            });
+          }
         }
         break;
 
       case 'error':
         if (data.content) {
-          messages.value.push({
-            id: generateId(),
-            role: 'system',
-            content: `错误: ${data.content}`,
-            timestamp: new Date()
-          });
+          if (isPrivateMode.value && selectedUser.value) {
+            if (!privateMessages.value[selectedUser.value]) {
+              privateMessages.value[selectedUser.value] = [];
+            }
+            privateMessages.value[selectedUser.value].push({
+              id: generateId(),
+              role: 'system',
+              content: `错误: ${data.content}`,
+              timestamp: new Date()
+            });
+          } else {
+            aiMessages.value.push({
+              id: generateId(),
+              role: 'system',
+              content: `错误: ${data.content}`,
+              timestamp: new Date()
+            });
+          }
         }
         break;
 
@@ -155,7 +195,10 @@ export const useChatStore = defineStore('chat', () => {
     if (!currentUser.value || !content.trim()) return;
 
     if (isPrivateMode.value && selectedUser.value) {
-      messages.value.push({
+      if (!privateMessages.value[selectedUser.value]) {
+        privateMessages.value[selectedUser.value] = [];
+      }
+      privateMessages.value[selectedUser.value].push({
         id: generateId(),
         role: 'private',
         content: content,
@@ -165,7 +208,7 @@ export const useChatStore = defineStore('chat', () => {
       });
       chatWebSocket.sendPrivate(selectedUser.value, content);
     } else {
-      messages.value.push({
+      aiMessages.value.push({
         id: generateId(),
         role: 'user',
         content: content,
@@ -204,7 +247,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const response = await api.getHistory(currentUser.value);
       if (response.success && response.history) {
-        messages.value = response.history.map((msg, index) => ({
+        aiMessages.value = response.history.map((msg, index) => ({
           id: generateId() + index,
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
@@ -224,7 +267,16 @@ export const useChatStore = defineStore('chat', () => {
   };
 
   const clearMessages = (): void => {
-    messages.value = [];
+    if (isPrivateMode.value && selectedUser.value) {
+      privateMessages.value[selectedUser.value] = [];
+    } else {
+      aiMessages.value = [];
+    }
+  };
+
+  const clearAllMessages = (): void => {
+    aiMessages.value = [];
+    privateMessages.value = {};
   };
 
   const logout = (): void => {
@@ -232,7 +284,7 @@ export const useChatStore = defineStore('chat', () => {
     currentUser.value = null;
     selectedUser.value = null;
     isPrivateMode.value = false;
-    clearMessages();
+    clearAllMessages();
     onlineUsers.value = [];
     connectionError.value = null;
   };
@@ -255,6 +307,7 @@ export const useChatStore = defineStore('chat', () => {
     getHistory,
     selectUser,
     clearMessages,
+    clearAllMessages,
     logout
   };
 });
