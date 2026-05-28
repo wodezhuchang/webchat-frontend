@@ -201,8 +201,8 @@ interface WebSocketMessage {
 创建 `.env` 文件：
 
 ```env
-VITE_API_URL=http://localhost:8000/api
-VITE_WS_URL=ws://localhost:8000/ws
+VITE_API_URL=http://10.160.183.22:8000/api
+VITE_WS_URL=ws://10.160.183.22:8000/ws
 ```
 
 ### 7.2 API 配置

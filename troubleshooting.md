@@ -69,8 +69,8 @@ ws://localhost:8000/ws/username  # 必须包含用户名
 
 ```env
 # 前端环境变量配置
-VITE_API_URL=http://localhost:8000/api
-VITE_WS_URL=ws://localhost:8000/ws
+VITE_API_URL=http://10.160.183.22:8000/api
+VITE_WS_URL=ws://10.160.183.22:8000/ws
 ```
 
 ### 4.2 正确的连接流程
