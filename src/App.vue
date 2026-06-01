@@ -1,34 +1,10 @@
 <template>
   <div id="app">
-    <LoginModal
-      ref="loginModalRef"
-      v-if="!chatStore.currentUser"
-      :show="!chatStore.currentUser"
-      @login="handleLogin"
-    />
-    <ChatView v-else />
+    <router-view />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useChatStore } from '@/stores/chat';
-import LoginModal from '@/components/LoginModal.vue';
-import ChatView from '@/views/ChatView.vue';
-
-const chatStore = useChatStore();
-const loginModalRef = ref<InstanceType<typeof LoginModal> | null>(null);
-
-
-const handleLogin = async (username: string): Promise<void> => {
-  try {
-    await chatStore.login(username);
-  } catch (error) {
-    if (loginModalRef.value) {
-      loginModalRef.value.setError(error instanceof Error ? error.message : '登录失败');
-    }
-  }
-};
 </script>
 
 <style>

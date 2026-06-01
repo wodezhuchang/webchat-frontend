@@ -233,7 +233,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const response = await api.getOnlineUsers();
       if (response.success) {
-        onlineUsers.value = response.users.filter(user => user !== currentUser.value);
+        onlineUsers.value = response.users.filter((user: string) => user !== currentUser.value);
       }
     } catch (error) {
       console.error('Failed to get online users:', error);
@@ -247,7 +247,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const response = await api.getHistory(currentUser.value);
       if (response.success && response.history) {
-        aiMessages.value = response.history.map((msg, index) => ({
+        aiMessages.value = response.history.map((msg: { role: string; content: string }, index: number) => ({
           id: generateId() + index,
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
