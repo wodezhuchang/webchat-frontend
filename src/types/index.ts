@@ -70,7 +70,7 @@ export interface ConversationListResponse {
 
 export interface ChatMessage {
   id: number;
-  session_id: number;
+  conversation_id: number;
   sender_type: number;
   sender_id: number | null;
   content: string;
@@ -156,7 +156,7 @@ export interface MessageListResponse {
 
 export interface MessageResponse {
   id: number;
-  session_id: number;
+  conversation_id: number;
   sender_type: number;
   sender_id: number | null;
   content: string;

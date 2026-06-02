@@ -18,9 +18,9 @@ export interface CreatePrivateConversationResponse {
   id: number;
   title: string;
   type: number;
-  is_new: boolean;
+  is_new?: boolean;
   target_user_id: number;
-  target_username: string;
+  target_username?: string;
   target_nickname?: string;
 }
 
