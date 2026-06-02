@@ -51,12 +51,22 @@ export const useSessionStore = defineStore('session', () => {
     };
   };
 
+  const convertDbMessageToPrivate = (msg: ChatMessage, currentUserId: number | null): LocalMessage => {
+    const isOwn = currentUserId !== null && msg.sender_id === currentUserId;
+    return {
+      id: msg.id.toString(),
+      role: 'private',
+      content: msg.content,
+      timestamp: new Date(msg.created_at)
+    };
+  };
+
   const loadSessions = async (): Promise<void> => {
     isLoading.value = true;
     error.value = null;
 
     try {
-      const response = await sessionApi.list(1);
+      const response = await sessionApi.list();
       sessions.value = response.sessions.sort(
         (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
@@ -107,6 +117,31 @@ export const useSessionStore = defineStore('session', () => {
       throw err;
     } finally {
       isLoading.value = false;
+    }
+  };
+
+  const getOrCreatePrivateSession = async (
+    targetUserId: number,
+    targetUsername: string
+  ): Promise<ChatSession> => {
+    const existing = sessions.value.find(
+      s => s.session_type === 2 && s.target_user_id === targetUserId
+    );
+
+    if (existing) {
+      return existing;
+    }
+
+    try {
+      const session = await sessionApi.getOrCreatePrivate(
+        targetUserId,
+        `与 ${targetUsername} 的对话`
+      );
+      sessions.value.unshift(session);
+      return session;
+    } catch (err: any) {
+      error.value = err?.message || '获取私聊会话失败';
+      throw err;
     }
   };
 
@@ -188,6 +223,16 @@ export const useSessionStore = defineStore('session', () => {
     }
   };
 
+  const deleteMessage = async (messageId: number): Promise<void> => {
+    try {
+      await messageApi.recall(messageId);
+      messages.value = messages.value.filter(m => m.id !== messageId.toString());
+    } catch (err) {
+      console.error('删除消息失败:', err);
+      throw err;
+    }
+  };
+
   const clearAll = (): void => {
     sessions.value = [];
     currentSessionId.value = null;
@@ -221,11 +266,13 @@ export const useSessionStore = defineStore('session', () => {
     loadSessions,
     createAISession,
     createPrivateSession,
+    getOrCreatePrivateSession,
     selectSession,
     loadMessages,
     addLocalMessage,
     updateSessionTitle,
     deleteSession,
+    deleteMessage,
     clearAll,
     getSessionByTargetUser
   };

@@ -5,7 +5,8 @@ import type {
   AuthLoginResponse,
   AuthRefreshResponse,
   AuthLogoutResponse,
-  User
+  User,
+  UserSearchResponse
 } from '@/types';
 
 export const authApi = {
@@ -51,6 +52,11 @@ export const authApi = {
         Authorization: `Bearer ${token}`
       }
     });
+    return response.data;
+  },
+
+  getUserByUsername: async (username: string): Promise<UserSearchResponse> => {
+    const response = await http.get<UserSearchResponse>(`/users/${username}`);
     return response.data;
   }
 };

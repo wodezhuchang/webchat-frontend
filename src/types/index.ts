@@ -12,7 +12,11 @@ export interface WebSocketMessage {
   content?: string;
   to?: string;
   from?: string;
+  from_id?: number;
   users?: string[];
+  conversation_id?: number;
+  message_id?: number;
+  timestamp?: string;
 }
 
 export interface ChatState {
@@ -42,6 +46,26 @@ export interface ChatSession {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface Conversation {
+  id: number;
+  type: number;
+  title: string;
+  target_user_id?: number;
+  target_username?: string;
+  target_nickname?: string;
+  is_online?: boolean;
+  last_message?: string;
+  last_message_time?: string;
+  unread_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationListResponse {
+  success: boolean;
+  conversations: Conversation[];
 }
 
 export interface ChatMessage {
@@ -178,3 +202,18 @@ export const STORAGE_KEYS = {
   USER_INFO: 'chat_user_info',
   CURRENT_SESSION: 'chat_current_session'
 } as const;
+
+export interface UserSearchResponse {
+  id: number;
+  username: string;
+  nickname?: string;
+  avatar?: string;
+  status: number;
+  created_at?: string;
+}
+
+export interface PrivateSessionResponse {
+  success: boolean;
+  session: ChatSession;
+  is_new?: boolean;
+}

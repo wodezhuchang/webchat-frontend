@@ -27,6 +27,24 @@ export const sessionApi = {
     return response.data;
   },
 
+  getOrCreatePrivate: async (
+    targetUserId: number,
+    targetUsername?: string
+  ): Promise<SessionResponse> => {
+    const params: Record<string, unknown> = {
+      target_user_id: targetUserId
+    };
+    if (targetUsername) {
+      params.target_username = targetUsername;
+    }
+    const response = await http.post<SessionResponse>(
+      '/sessions/private',
+      null,
+      { params }
+    );
+    return response.data;
+  },
+
   update: async (sessionId: number, data: SessionUpdateRequest): Promise<SessionResponse> => {
     const response = await http.put<SessionResponse>(`/sessions/${sessionId}`, data);
     return response.data;

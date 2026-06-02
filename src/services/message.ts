@@ -5,16 +5,16 @@ import type {
 } from '@/types';
 
 export const messageApi = {
-  getBySession: async (
-    sessionId: number,
+  getByConversation: async (
+    conversationId: number,
     options?: {
       page?: number;
       limit?: number;
     }
   ): Promise<MessageListResponse> => {
-    const { page = 1, limit = 20 } = options || {};
+    const { page = 1, limit = 50 } = options || {};
     const response = await http.get<MessageListResponse>(
-      `/messages/session/${sessionId}`,
+      `/messages/conversation/${conversationId}`,
       {
         params: { page, limit }
       }
@@ -22,8 +22,13 @@ export const messageApi = {
     return response.data;
   },
 
-  recall: async (messageId: number): Promise<ApiResponse> => {
+  delete: async (messageId: number): Promise<ApiResponse> => {
     const response = await http.delete<ApiResponse>(`/messages/${messageId}`);
+    return response.data;
+  },
+
+  recall: async (messageId: number): Promise<ApiResponse> => {
+    const response = await http.put<ApiResponse>(`/messages/${messageId}/recall`);
     return response.data;
   }
 };

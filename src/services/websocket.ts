@@ -162,12 +162,20 @@ export class ChatWebSocket {
     }
   }
 
-  sendAI(content: string): void {
-    this.send({ type: 'ai', content });
+  sendAI(content: string, sessionId?: number): void {
+    const data: any = { type: 'ai', content };
+    if (sessionId !== undefined) {
+      data.session_id = sessionId;
+    }
+    this.send(data);
   }
 
-  sendPrivate(to: string, content: string): void {
-    this.send({ type: 'user', to, content });
+  sendPrivate(to: string, content: string, sessionId?: number): void {
+    const data: any = { type: 'user', to, content };
+    if (sessionId !== undefined) {
+      data.session_id = sessionId;
+    }
+    this.send(data);
   }
 
   requestOnlineUsers(): void {
