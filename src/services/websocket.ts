@@ -1,6 +1,14 @@
 import type { WebSocketMessage } from '@/types';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws';
+const getWebSocketUrl = (): string => {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws`;
+};
+
+const WS_URL = getWebSocketUrl();
 
 export class ChatWebSocket {
   private ws: WebSocket | null = null;
