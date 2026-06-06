@@ -350,12 +350,17 @@ const setupWebSocketCallbacks = (): void => {
 };
 
 onMounted(async () => {
-  const username = authStore.user?.username || 
-    (localStorage.getItem('chat_user_info') ? JSON.parse(localStorage.getItem('chat_user_info') || '{}').username : null);
-  const userId = authStore.user?.id;
+  const storedUserInfo = localStorage.getItem('chat_user_info');
+  const storedUser = storedUserInfo ? JSON.parse(storedUserInfo) : null;
+  
+  const username = authStore.user?.username || storedUser?.username;
+  const userId = authStore.user?.id || storedUser?.id;
 
   if (username) {
     chatStore.setCurrentUser(username, userId);
+    if (userId) {
+      convStore.setCurrentUserId(userId);
+    }
     setupWebSocketCallbacks();
     chatStore.connectWebSocket();
   }

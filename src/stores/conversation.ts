@@ -21,6 +21,11 @@ export const useConversationStore = defineStore('conversation', () => {
   const hasMore = ref<boolean>(true);
   const currentPage = ref<number>(1);
   const onlineUsersMap = ref<Record<string, boolean>>({});
+  const currentUserId = ref<number | null>(null);
+
+  const setCurrentUserId = (userId: number | null): void => {
+    currentUserId.value = userId;
+  };
 
   const aiConversations = computed(() =>
     conversations.value.filter(c => c.type === 1)
@@ -36,8 +41,9 @@ export const useConversationStore = defineStore('conversation', () => {
 
   const convertDbMessageToLocal = (
     msg: ChatMessage,
-    currentUserId: number | null = null
+    userId: number | null = null
   ): LocalMessage => {
+    const uid = userId ?? currentUserId.value;
     let role: LocalMessage['role'];
     let from: string | undefined;
     let to: string | undefined;
@@ -45,12 +51,13 @@ export const useConversationStore = defineStore('conversation', () => {
     if (msg.sender_type === SENDER_TYPE.USER) {
       role = currentConversation.value?.type === 2 ? 'private' : 'user';
       if (currentConversation.value?.type === 2) {
-        if (currentUserId !== null && msg.sender_id === currentUserId) {
-          const conv = currentConversation.value;
-          if (conv) {
-            from = conv.target_username;
-            to = undefined;
-          }
+        const conv = currentConversation.value;
+        if (uid !== null && msg.sender_id === uid) {
+          from = undefined;
+          to = conv.target_username;
+        } else if (conv.target_username) {
+          from = conv.target_username;
+          to = undefined;
         }
       }
     } else if (msg.sender_type === SENDER_TYPE.AI) {
@@ -179,12 +186,14 @@ export const useConversationStore = defineStore('conversation', () => {
 
   const loadMessages = async (
     conversationId: number,
-    currentUserId: number | null = null
+    userId: number | null = null
   ): Promise<void> => {
     isLoadingMessages.value = true;
     currentPage.value = 1;
     hasMore.value = true;
     messages.value = [];
+
+    const uid = userId ?? currentUserId.value;
 
     try {
       const response = await messageApi.getByConversation(conversationId, {
@@ -201,15 +210,20 @@ export const useConversationStore = defineStore('conversation', () => {
         if (isPrivate) {
           const conv = currentConversation.value;
           let from: string | undefined;
-          if (conv && msg.sender_id !== currentUserId && conv.target_username) {
-            from = conv.target_username;
+          let to: string | undefined;
+          if (conv) {
+            if (uid !== null && msg.sender_id === uid) {
+              to = conv.target_username;
+            } else if (conv.target_username) {
+              from = conv.target_username;
+            }
           }
           return {
             id: msg.id.toString(),
             role: 'private',
             content: msg.content,
             from,
-            to: msg.sender_id === currentUserId ? (conv?.target_username || undefined) : undefined,
+            to,
             timestamp: new Date(msg.created_at)
           };
         } else {
@@ -337,6 +351,8 @@ export const useConversationStore = defineStore('conversation', () => {
     error,
     hasMore,
     currentPage,
+    currentUserId,
+    setCurrentUserId,
     aiConversations,
     privateConversations,
     loadConversations,
